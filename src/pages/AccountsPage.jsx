@@ -288,7 +288,7 @@ export default function AccountsPage() {
             Manage available and sold Coursera subscription accounts.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+        <div className="page-header-actions">
           <Button variant="secondary" icon={Layers} onClick={() => setIsBulkOpen(true)}>
             Bulk Add
           </Button>
@@ -299,7 +299,7 @@ export default function AccountsPage() {
       </div>
 
       {/* Filters Toolbar */}
-      <div style={{ 
+      <div className="filters-row" style={{ 
         display: 'flex', 
         gap: 'var(--space-3)', 
         marginBottom: 'var(--space-4)', 

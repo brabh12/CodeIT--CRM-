@@ -99,9 +99,11 @@ export default function DashboardPage() {
             Overview of customers, subscription inventory, and profits.
           </p>
         </div>
-        <Button variant="primary" icon={Plus} onClick={() => navigate('/orders')}>
-          New Order
-        </Button>
+        <div className="page-header-actions">
+          <Button variant="primary" icon={Plus} onClick={() => navigate('/orders')}>
+            New Order
+          </Button>
+        </div>
       </div>
 
       {loading ? (

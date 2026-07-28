@@ -108,6 +108,7 @@ export default function CustomersPage() {
     }
   };
 
+
   const validateForm = () => {
     const errs = {};
     if (!formData.full_name.trim()) errs.full_name = 'Full name is required';
@@ -156,6 +157,11 @@ export default function CustomersPage() {
     }
   };
 
+
+
+
+  
+
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
@@ -197,13 +203,15 @@ export default function CustomersPage() {
             Manage client profiles and view order histories.
           </p>
         </div>
-        <Button variant="primary" icon={Plus} onClick={handleOpenAdd}>
-          Add Customer
-        </Button>
+        <div className="page-header-actions">
+          <Button variant="primary" icon={Plus} onClick={handleOpenAdd}>
+            Add Customer
+          </Button>
+        </div>
       </div>
 
       {/* Search & Toolbar */}
-      <div style={{ marginBottom: 'var(--space-4)', width: '300px', position: 'relative' }}>
+      <div className="search-input-wrapper" style={{ marginBottom: 'var(--space-4)', maxWidth: '300px', width: '100%', position: 'relative' }}>
         <Input
           placeholder="Search by name, phone, email..."
           value={searchQuery}

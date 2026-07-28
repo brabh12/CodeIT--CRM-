@@ -286,13 +286,15 @@ export default function OrdersPage() {
             Track sales, assign inventory accounts, and calculate profit margins.
           </p>
         </div>
-        <Button variant="primary" icon={Plus} onClick={handleOpenAdd}>
-          New Order
-        </Button>
+        <div className="page-header-actions">
+          <Button variant="primary" icon={Plus} onClick={handleOpenAdd}>
+            New Order
+          </Button>
+        </div>
       </div>
 
       {/* Filter Toolbar */}
-      <div style={{ 
+      <div className="filters-row" style={{ 
         display: 'flex', 
         gap: 'var(--space-3)', 
         marginBottom: 'var(--space-4)', 

@@ -128,9 +128,11 @@ export default function SettingsPage() {
             Configure subscription plan types, default sale prices, and default cost prices.
           </p>
         </div>
-        <Button variant="primary" icon={Plus} onClick={handleOpenAdd}>
-          Add Plan Type
-        </Button>
+        <div className="page-header-actions">
+          <Button variant="primary" icon={Plus} onClick={handleOpenAdd}>
+            Add Plan Type
+          </Button>
+        </div>
       </div>
 
       <div style={{
