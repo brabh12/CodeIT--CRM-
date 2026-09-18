@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
 import { useToast } from '../context/ToastContext';
 import Button from '../components/UI/Button';
 import Input from '../components/UI/Input';
@@ -8,28 +7,63 @@ import Badge from '../components/UI/Badge';
 import SlideOver from '../components/UI/SlideOver';
 import ConfirmModal from '../components/UI/ConfirmModal';
 import EmptyState from '../components/UI/EmptyState';
-import { Plus, Edit2, Trash2, ShoppingCart, Filter, User, KeyRound, DollarSign, UserPlus } from 'lucide-react';
+import { 
+  Plus, 
+  Edit2, 
+  Trash2, 
+  ShoppingCart, 
+  Filter, 
+  User, 
+  KeyRound, 
+  DollarSign, 
+  UserPlus, 
+  Inbox, 
+  CheckCircle2, 
+  Clock, 
+  Phone, 
+  Mail, 
+  ArrowRight,
+  ExternalLink
+} from 'lucide-react';
+import { 
+  getCrmServices, 
+  getCrmPlans, 
+  getCrmAccounts, 
+  getCrmOrders, 
+  saveCrmOrder, 
+  deleteCrmOrder, 
+  getCrmCustomers, 
+  saveCrmCustomer,
+  getCrmLeads,
+  updateLeadStatus
+} from '../lib/crmData';
 
 export default function OrdersPage() {
+  const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'leads'
   const [orders, setOrders] = useState([]);
+  const [leads, setLeads] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const [services, setServices] = useState([]);
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filter
+  // Filters
   const [statusFilter, setStatusFilter] = useState('all');
+  const [serviceFilter, setServiceFilter] = useState('all');
 
   // Order Slide-Over Form State
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
+  const [processingLead, setProcessingLead] = useState(null);
   const [isInlineCustomer, setIsInlineCustomer] = useState(false);
 
   const [formData, setFormData] = useState({
     customer_id: '',
     new_customer_name: '',
     new_customer_phone: '',
-    plan_type: '1_month',
+    service_id: '',
+    plan_id: '',
     account_id: '',
     sale_price: '3500',
     cost_price: '2000',
@@ -51,72 +85,64 @@ export default function OrdersPage() {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch settings for default prices
-      const { data: settingsData } = await supabase
-        .from('settings')
-        .select('*')
-        .order('plan_type');
-      setPlans(settingsData || []);
+      const [fetchedServices, fetchedPlans, fetchedCustomers, fetchedAccounts, fetchedOrders, fetchedLeads] = await Promise.all([
+        getCrmServices(),
+        getCrmPlans(),
+        getCrmCustomers(),
+        getCrmAccounts(),
+        getCrmOrders(),
+        getCrmLeads()
+      ]);
 
-      // 2. Fetch customers
-      const { data: customersData } = await supabase
-        .from('customers')
-        .select('id, full_name, phone')
-        .order('full_name');
-      setCustomers(customersData || []);
-
-      // 3. Fetch accounts (available + sold for assignment dropdown)
-      const { data: accountsData } = await supabase
-        .from('accounts')
-        .select('id, account_email, account_password, plan_type, status, cost_price')
-        .order('created_at', { ascending: false });
-      setAccounts(accountsData || []);
-
-      // 4. Fetch orders
-      const { data: ordersData, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          customer:customers(full_name, phone),
-          account:accounts(account_email, account_password, status)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setOrders(ordersData || []);
+      setServices(fetchedServices);
+      setPlans(fetchedPlans);
+      setCustomers(fetchedCustomers);
+      setAccounts(fetchedAccounts);
+      setOrders(fetchedOrders);
+      setLeads(fetchedLeads);
     } catch (err) {
-      console.error('Error fetching orders:', err);
-      addToast(err.message || 'Failed to load orders', 'error');
+      console.error('Error loading orders data:', err);
+      addToast('Failed to load orders data', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const autoSelectAccountAndPrice = (planType, currentAccounts, currentPlans) => {
-    const matchedPlan = currentPlans.find(p => p.plan_type === planType);
+  // Helper to auto-select account and price based on Service & Plan
+  const autoSelectAccountAndPrice = (serviceId, planId, allAccounts, allPlans) => {
+    const matchedPlan = allPlans.find(p => p.id === planId);
     const salePrice = matchedPlan ? String(matchedPlan.default_sale_price) : '3500';
-    
-    // Find first available account of this plan type
-    const availAcc = currentAccounts.find(a => a.plan_type === planType && a.status === 'available');
+
+    // Find first available account matching this service and plan
+    const availAcc = allAccounts.find(a => 
+      a.status === 'available' && 
+      (a.plan_id === planId || (a.service_id === serviceId && a.plan_type === matchedPlan?.plan_type))
+    );
+
     const accountId = availAcc ? availAcc.id : '';
     const costPrice = availAcc 
       ? String(availAcc.cost_price) 
-      : (matchedPlan ? String(matchedPlan.default_cost_price) : '2000');
+      : (matchedPlan && matchedPlan.default_cost_price ? String(matchedPlan.default_cost_price) : '0');
 
     return { salePrice, costPrice, accountId };
   };
 
   const handleOpenAdd = () => {
     setEditingOrder(null);
+    setProcessingLead(null);
     setIsInlineCustomer(false);
-    const defaultPlan = plans[0]?.plan_type || '1_month';
-    const auto = autoSelectAccountAndPrice(defaultPlan, accounts, plans);
+
+    const defaultService = services[0]?.id || 'svc-coursera';
+    const plansForService = plans.filter(p => p.service_id === defaultService);
+    const defaultPlan = plansForService[0]?.id || plans[0]?.id || '';
+    const auto = autoSelectAccountAndPrice(defaultService, defaultPlan, accounts, plans);
 
     setFormData({
       customer_id: customers[0]?.id || '',
       new_customer_name: '',
       new_customer_phone: '',
-      plan_type: defaultPlan,
+      service_id: defaultService,
+      plan_id: defaultPlan,
       account_id: auto.accountId,
       sale_price: auto.salePrice,
       cost_price: auto.costPrice,
@@ -128,13 +154,15 @@ export default function OrdersPage() {
 
   const handleOpenEdit = (order) => {
     setEditingOrder(order);
+    setProcessingLead(null);
     setIsInlineCustomer(false);
 
     setFormData({
       customer_id: order.customer_id || '',
       new_customer_name: '',
       new_customer_phone: '',
-      plan_type: order.plan_type || '1_month',
+      service_id: order.service_id || 'svc-coursera',
+      plan_id: order.plan_id || '',
       account_id: order.account_id || '',
       sale_price: String(order.sale_price || 0),
       cost_price: String(order.cost_price || 0),
@@ -144,11 +172,72 @@ export default function OrdersPage() {
     setIsFormOpen(true);
   };
 
-  const handlePlanChange = (newPlanType) => {
-    const auto = autoSelectAccountAndPrice(newPlanType, accounts, plans);
+  // Convert an incoming web lead into an active order
+  const handleProcessLead = (lead) => {
+    setProcessingLead(lead);
+    setEditingOrder(null);
+    setIsInlineCustomer(false);
+
+    // Identify target service (CapCut for /capcut leads)
+    const targetService = services.find(s => s.slug === lead.service) || services.find(s => s.slug === 'capcut') || services[0];
+    const servicePlans = plans.filter(p => p.service_id === targetService?.id);
+    const targetPlan = servicePlans[0] || plans[0];
+
+    // Check if customer already exists by phone
+    const existingCust = customers.find(c => c.phone === lead.phone);
+    const auto = autoSelectAccountAndPrice(targetService?.id, targetPlan?.id, accounts, plans);
+
+    if (existingCust) {
+      setFormData({
+        customer_id: existingCust.id,
+        new_customer_name: '',
+        new_customer_phone: '',
+        service_id: targetService?.id || '',
+        plan_id: targetPlan?.id || '',
+        account_id: auto.accountId,
+        sale_price: auto.salePrice,
+        cost_price: auto.costPrice,
+        order_status: 'delivered'
+      });
+    } else {
+      setIsInlineCustomer(true);
+      setFormData({
+        customer_id: '',
+        new_customer_name: lead.full_name,
+        new_customer_phone: lead.phone,
+        service_id: targetService?.id || '',
+        plan_id: targetPlan?.id || '',
+        account_id: auto.accountId,
+        sale_price: auto.salePrice,
+        cost_price: auto.costPrice,
+        order_status: 'delivered'
+      });
+    }
+
+    setErrors({});
+    setIsFormOpen(true);
+  };
+
+  const handleServiceChange = (newServiceId) => {
+    const plansForNewService = plans.filter(p => p.service_id === newServiceId);
+    const defaultPlan = plansForNewService[0]?.id || '';
+    const auto = autoSelectAccountAndPrice(newServiceId, defaultPlan, accounts, plans);
+
     setFormData(prev => ({
       ...prev,
-      plan_type: newPlanType,
+      service_id: newServiceId,
+      plan_id: defaultPlan,
+      account_id: auto.accountId,
+      sale_price: auto.salePrice,
+      cost_price: auto.costPrice
+    }));
+  };
+
+  const handlePlanChange = (newPlanId) => {
+    const auto = autoSelectAccountAndPrice(formData.service_id, newPlanId, accounts, plans);
+    setFormData(prev => ({
+      ...prev,
+      plan_id: newPlanId,
       account_id: auto.accountId,
       sale_price: auto.salePrice,
       cost_price: auto.costPrice
@@ -173,6 +262,8 @@ export default function OrdersPage() {
       if (!formData.customer_id) errs.customer_id = 'Please select a customer';
     }
 
+    if (!formData.service_id) errs.service_id = 'Select a service';
+    if (!formData.plan_id) errs.plan_id = 'Select a plan';
     if (!formData.sale_price || isNaN(formData.sale_price)) errs.sale_price = 'Enter a valid sale price';
     if (!formData.cost_price || isNaN(formData.cost_price)) errs.cost_price = 'Enter a valid cost price';
     setErrors(errs);
@@ -188,42 +279,41 @@ export default function OrdersPage() {
 
       // 1. Handle Inline Customer Creation
       if (isInlineCustomer) {
-        const { data: newCust, error: custError } = await supabase
-          .from('customers')
-          .insert([{
-            full_name: formData.new_customer_name.trim(),
-            phone: formData.new_customer_phone.trim()
-          }])
-          .select()
-          .single();
-
-        if (custError) throw custError;
-        activeCustomerId = newCust.id;
+        const newCust = await saveCrmCustomer({
+          full_name: formData.new_customer_name.trim(),
+          phone: formData.new_customer_phone.trim(),
+          email: processingLead?.email || null,
+          notes: processingLead ? `Created from CapCut landing page lead (${processingLead.payment_method})` : null
+        });
+        activeCustomerId = newCust[newCust.length - 1].id;
       }
 
-      // 2. Prepare Order Payload
+      // 2. Prepare Order Payload (writes service_id and plan_id)
+      const selectedPlan = plans.find(p => p.id === formData.plan_id);
       const payload = {
         customer_id: activeCustomerId,
         account_id: formData.account_id || null,
-        plan_type: formData.plan_type,
+        service_id: formData.service_id,
+        plan_id: formData.plan_id,
+        plan_type: selectedPlan?.plan_type || '1_month',
         sale_price: parseFloat(formData.sale_price),
         cost_price: parseFloat(formData.cost_price),
         order_status: formData.order_status
       };
 
       if (editingOrder) {
-        const { error } = await supabase
-          .from('orders')
-          .update(payload)
-          .eq('id', editingOrder.id);
-        if (error) throw error;
+        payload.id = editingOrder.id;
+        await saveCrmOrder(payload);
         addToast('Order updated successfully', 'success');
       } else {
-        const { error } = await supabase
-          .from('orders')
-          .insert([payload]);
-        if (error) throw error;
+        await saveCrmOrder(payload);
         addToast('Order created successfully', 'success');
+      }
+
+      // 3. If processing a lead, mark lead as completed
+      if (processingLead) {
+        await updateLeadStatus(processingLead.id, 'completed');
+        addToast('Web lead marked as completed!', 'info');
       }
 
       setIsFormOpen(false);
@@ -240,20 +330,7 @@ export default function OrdersPage() {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
-      // If deleting an order with an assigned account, release account back to available
-      if (deleteTarget.account_id && deleteTarget.order_status !== 'cancelled') {
-        await supabase
-          .from('accounts')
-          .update({ status: 'available', sold_at: null })
-          .eq('id', deleteTarget.account_id);
-      }
-
-      const { error } = await supabase
-        .from('orders')
-        .delete()
-        .eq('id', deleteTarget.id);
-
-      if (error) throw error;
+      await deleteCrmOrder(deleteTarget.id);
       addToast('Order deleted successfully', 'success');
       setDeleteTarget(null);
       fetchInitialData();
@@ -267,23 +344,28 @@ export default function OrdersPage() {
 
   // Filter orders
   const filteredOrders = orders.filter(o => {
-    if (statusFilter === 'all') return true;
-    return o.order_status === statusFilter;
+    const matchStatus = statusFilter === 'all' || o.order_status === statusFilter;
+    const matchService = serviceFilter === 'all' || o.service_id === serviceFilter || (o.service?.slug === serviceFilter);
+    return matchStatus && matchService;
   });
 
-  // Filter available accounts for current form plan type
-  const availableAccountsForPlan = accounts.filter(a => 
-    a.plan_type === formData.plan_type && 
-    (a.status === 'available' || a.id === formData.account_id)
-  );
+  // Filter available accounts matching the active form's service & plan
+  const availableAccountsForPlan = accounts.filter(a => {
+    const matchPlan = a.plan_id === formData.plan_id || a.plan_type === plans.find(p => p.id === formData.plan_id)?.plan_type;
+    const matchService = !a.service_id || a.service_id === formData.service_id;
+    const isAvailOrCurrent = a.status === 'available' || a.id === formData.account_id;
+    return matchPlan && matchService && isAvailOrCurrent;
+  });
+
+  const pendingLeadsCount = leads.filter(l => l.status === 'pending').length;
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Orders / Sales</h1>
+          <h1 className="page-title">Orders & Sales</h1>
           <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-            Track sales, assign inventory accounts, and calculate profit margins.
+            Manage subscription sales across Coursera, CapCut, and review incoming web orders.
           </p>
         </div>
         <div className="page-header-actions">
@@ -293,138 +375,309 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="filters-row" style={{ 
-        display: 'flex', 
-        gap: 'var(--space-3)', 
-        marginBottom: 'var(--space-4)', 
-        alignItems: 'center' 
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-          <Filter size={16} style={{ color: 'var(--color-text-secondary)' }} />
-          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Status:</span>
-        </div>
+      {/* Main Mode Tabs: Sales vs Incoming Web Leads */}
+      <div className="service-tabs-bar" style={{ marginBottom: 'var(--space-4)' }}>
+        <button
+          type="button"
+          className={`service-tab ${activeTab === 'orders' ? 'active' : ''}`}
+          onClick={() => setActiveTab('orders')}
+        >
+          <ShoppingCart size={14} />
+          <span>All Sales Orders</span>
+          <span className="service-tab-count">{orders.length}</span>
+        </button>
 
-        <Select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          placeholder=""
-          options={[
-            { value: 'all', label: 'All Orders' },
-            { value: 'delivered', label: 'Delivered' },
-            { value: 'pending', label: 'Pending' },
-            { value: 'cancelled', label: 'Cancelled' }
-          ]}
-          style={{ width: '160px', height: '32px' }}
-        />
+        <button
+          type="button"
+          className={`service-tab ${activeTab === 'leads' ? 'active' : ''}`}
+          onClick={() => setActiveTab('leads')}
+        >
+          <Inbox size={14} />
+          <span>Incoming Web Orders (Leads)</span>
+          {pendingLeadsCount > 0 && (
+            <span className="service-tab-count" style={{ backgroundColor: '#fef08a', color: '#854d0e', fontWeight: 700 }}>
+              {pendingLeadsCount} New
+            </span>
+          )}
+        </button>
       </div>
 
-      {/* Table Container */}
-      <div className="table-container">
-        {loading ? (
-          <div style={{ padding: 'var(--space-6)', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-            Loading order records...
+      {activeTab === 'leads' ? (
+        /* ========================================================
+           INCOMING WEB LEADS TABLE (CapCut / External Landing Pages)
+           ======================================================== */
+        <div>
+          <div style={{
+            backgroundColor: 'var(--color-accent-bg-subtle)',
+            border: '1px solid var(--color-border-default)',
+            borderRadius: 'var(--radius-md)',
+            padding: 'var(--space-3) var(--space-4)',
+            marginBottom: 'var(--space-4)',
+            fontSize: 'var(--text-xs)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <div>
+              <strong>Public Landing Submissions:</strong> Orders placed directly by customers on the public landing page (e.g. <code>/capcut</code>). Confirm payment and click <strong>Process Sale</strong> to assign an available account.
+            </div>
+            <a 
+              href="/capcut" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--color-accent)', fontWeight: 600 }}
+            >
+              <span>View /capcut page</span>
+              <ExternalLink size={12} />
+            </a>
           </div>
-        ) : filteredOrders.length === 0 ? (
-          <EmptyState
-            title="No orders found"
-            description="Create your first sale order to link customers with inventory accounts."
-            actionLabel="+ Create Order"
-            onAction={handleOpenAdd}
-          />
-        ) : (
-          <table className="notion-table">
-            <thead>
-              <tr>
-                <th>Customer</th>
-                <th>Plan</th>
-                <th>Assigned Account</th>
-                <th>Sale Price</th>
-                <th>Cost</th>
-                <th>Profit</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrders.map((order) => (
-                <tr key={order.id}>
-                  <td style={{ fontWeight: 500 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                      <User size={16} style={{ color: 'var(--color-text-secondary)' }} />
-                      <span>{order.customer?.full_name || 'Unknown Customer'}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <span style={{ textTransform: 'capitalize' }}>
-                      {order.plan_type?.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td style={{ fontSize: 'var(--text-xs)' }}>
-                    {order.account ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
-                        <KeyRound size={14} style={{ color: 'var(--color-accent)' }} />
-                        <span>{order.account.account_email}</span>
-                      </div>
-                    ) : (
-                      <span style={{ color: 'var(--color-text-disabled)' }}>Unassigned</span>
-                    )}
-                  </td>
-                  <td>{Number(order.sale_price).toLocaleString('fr-DZ')} DZD</td>
-                  <td style={{ color: 'var(--color-text-secondary)' }}>
-                    {Number(order.cost_price).toLocaleString('fr-DZ')} DZD
-                  </td>
-                  <td style={{ 
-                    fontWeight: 600, 
-                    color: order.order_status === 'cancelled' 
-                      ? 'var(--color-text-disabled)' 
-                      : 'var(--color-success)' 
-                  }}>
-                    {order.order_status === 'cancelled' ? '0 DZD' : `${Number(order.profit).toLocaleString('fr-DZ')} DZD`}
-                  </td>
-                  <td>
-                    <Badge status={order.order_status} />
-                  </td>
-                  <td style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
-                    {new Date(order.created_at).toLocaleDateString('en-GB', {
-                      day: '2-digit',
-                      month: 'short',
-                      year: 'numeric'
-                    })}
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-1)' }}>
-                      <Button
-                        variant="secondary"
-                        size="compact"
-                        icon={Edit2}
-                        onClick={() => handleOpenEdit(order)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="compact"
-                        icon={Trash2}
-                        onClick={() => setDeleteTarget(order)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
 
-      {/* Create / Edit Order Slide-Over */}
+          <div className="table-container">
+            {loading ? (
+              <div style={{ padding: 'var(--space-6)', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                Loading incoming leads...
+              </div>
+            ) : leads.length === 0 ? (
+              <EmptyState
+                title="No incoming web orders yet"
+                description="Orders submitted through public pages like /capcut will appear here for payment confirmation and account delivery."
+              />
+            ) : (
+              <table className="notion-table">
+                <thead>
+                  <tr>
+                    <th>Customer Name</th>
+                    <th>Service</th>
+                    <th>Contact Phone</th>
+                    <th>Email Address</th>
+                    <th>Payment Method</th>
+                    <th>Notes / Ref</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leads.map((lead) => (
+                    <tr key={lead.id}>
+                      <td style={{ fontWeight: 600 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                          <User size={15} style={{ color: 'var(--color-text-secondary)' }} />
+                          <span>{lead.full_name}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <Badge service={lead.service || 'capcut'} label={lead.service === 'capcut' ? 'CapCut Pro' : lead.service} />
+                      </td>
+                      <td style={{ fontFamily: 'monospace', fontSize: 'var(--text-xs)' }}>
+                        {lead.phone}
+                      </td>
+                      <td style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-xs)' }}>
+                        {lead.email}
+                      </td>
+                      <td>
+                        <span style={{ textTransform: 'capitalize', fontSize: 'var(--text-xs)' }}>
+                          {lead.payment_method === 'baridimob' ? 'Baridimob (RIP)' : lead.payment_method === 'ccp' ? 'CCP' : lead.payment_method || 'Manual'}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {lead.notes || '—'}
+                      </td>
+                      <td>
+                        <Badge status={lead.status} />
+                      </td>
+                      <td style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
+                        {new Date(lead.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        {lead.status === 'pending' ? (
+                          <Button
+                            variant="primary"
+                            size="compact"
+                            icon={CheckCircle2}
+                            onClick={() => handleProcessLead(lead)}
+                          >
+                            Process Sale
+                          </Button>
+                        ) : (
+                          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-success)', fontWeight: 500 }}>
+                            Fulfilled ✓
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* ========================================================
+           ALL SALES ORDERS TABLE (Coursera, CapCut & Future)
+           ======================================================== */
+        <div>
+          {/* Filters Toolbar */}
+          <div className="filters-row" style={{ 
+            display: 'flex', 
+            gap: 'var(--space-3)', 
+            marginBottom: 'var(--space-4)', 
+            alignItems: 'center',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <Filter size={16} style={{ color: 'var(--color-text-secondary)' }} />
+              <span style={{ fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Filters:</span>
+            </div>
+
+            {/* Service Filter */}
+            <Select
+              value={serviceFilter}
+              onChange={(e) => setServiceFilter(e.target.value)}
+              placeholder=""
+              options={[
+                { value: 'all', label: 'All Services' },
+                ...services.map(s => ({ value: s.id, label: s.name }))
+              ]}
+              style={{ width: '150px', height: '32px' }}
+            />
+
+            {/* Status Filter */}
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              placeholder=""
+              options={[
+                { value: 'all', label: 'All Statuses' },
+                { value: 'delivered', label: 'Delivered' },
+                { value: 'pending', label: 'Pending' },
+                { value: 'cancelled', label: 'Cancelled' }
+              ]}
+              style={{ width: '150px', height: '32px' }}
+            />
+          </div>
+
+          {/* Table Container */}
+          <div className="table-container">
+            {loading ? (
+              <div style={{ padding: 'var(--space-6)', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                Loading order records...
+              </div>
+            ) : filteredOrders.length === 0 ? (
+              <EmptyState
+                title="No orders found"
+                description="Create your first sale order to link customers with inventory accounts."
+                actionLabel="+ Create Order"
+                onAction={handleOpenAdd}
+              />
+            ) : (
+              <table className="notion-table">
+                <thead>
+                  <tr>
+                    <th>Customer</th>
+                    <th>Service</th>
+                    <th>Plan</th>
+                    <th>Assigned Account</th>
+                    <th>Sale Price</th>
+                    <th>Cost</th>
+                    <th>Profit</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredOrders.map((order) => {
+                    const matchedService = services.find(s => s.id === order.service_id) || { name: 'Coursera', slug: 'coursera' };
+                    const matchedPlan = plans.find(p => p.id === order.plan_id);
+
+                    return (
+                      <tr key={order.id}>
+                        <td style={{ fontWeight: 500 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                            <User size={15} style={{ color: 'var(--color-text-secondary)' }} />
+                            <span>{order.customer?.full_name || 'Customer'}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <Badge service={matchedService.slug} label={matchedService.name} />
+                        </td>
+                        <td>
+                          <span style={{ textTransform: 'capitalize' }}>
+                            {matchedPlan?.name || order.plan_type?.replace('_', ' ')} Plan
+                          </span>
+                        </td>
+                        <td style={{ fontSize: 'var(--text-xs)' }}>
+                          {order.account ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
+                              <KeyRound size={13} style={{ color: 'var(--color-accent)' }} />
+                              <span>{order.account.account_email}</span>
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--color-text-disabled)' }}>Unassigned</span>
+                          )}
+                        </td>
+                        <td>{Number(order.sale_price).toLocaleString('fr-DZ')} DZD</td>
+                        <td style={{ color: 'var(--color-text-secondary)' }}>
+                          {Number(order.cost_price).toLocaleString('fr-DZ')} DZD
+                        </td>
+                        <td style={{ 
+                          fontWeight: 600, 
+                          color: order.order_status === 'cancelled' ? 'var(--color-text-disabled)' : 'var(--color-success)' 
+                        }}>
+                          {order.order_status === 'cancelled' ? '0 DZD' : `${Number(order.profit).toLocaleString('fr-DZ')} DZD`}
+                        </td>
+                        <td>
+                          <Badge status={order.order_status} />
+                        </td>
+                        <td style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
+                          {new Date(order.created_at).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-1)' }}>
+                            <Button
+                              variant="secondary"
+                              size="compact"
+                              icon={Edit2}
+                              onClick={() => handleOpenEdit(order)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="compact"
+                              icon={Trash2}
+                              onClick={() => setDeleteTarget(order)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Create / Edit Order Slide-Over Panel */}
       <SlideOver
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
-        title={editingOrder ? 'Edit Order' : 'Create New Order'}
+        title={
+          processingLead 
+            ? 'Process Incoming Web Order' 
+            : editingOrder 
+              ? 'Edit Order' 
+              : 'Create New Order'
+        }
         onSave={handleSaveOrder}
         isSubmitting={isSubmitting}
       >
@@ -433,23 +686,25 @@ export default function OrdersPage() {
           <div style={{ marginBottom: 'var(--space-3)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-2)' }}>
               <span className="form-label" style={{ marginBottom: 0 }}>Customer</span>
-              <button
-                type="button"
-                onClick={() => setIsInlineCustomer(!isInlineCustomer)}
-                style={{
-                  border: 'none',
-                  background: 'transparent',
-                  color: 'var(--color-accent)',
-                  fontSize: 'var(--text-xs)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <UserPlus size={14} />
-                <span>{isInlineCustomer ? 'Select existing customer' : '+ Create new customer'}</span>
-              </button>
+              {!processingLead && (
+                <button
+                  type="button"
+                  onClick={() => setIsInlineCustomer(!isInlineCustomer)}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'var(--color-accent)',
+                    fontSize: 'var(--text-xs)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <UserPlus size={14} />
+                  <span>{isInlineCustomer ? 'Select existing customer' : '+ Create new customer'}</span>
+                </button>
+              )}
             </div>
 
             {!isInlineCustomer ? (
@@ -492,20 +747,39 @@ export default function OrdersPage() {
           </div>
         )}
 
+        {/* 1. Pick Service First */}
         <Select
-          label="Plan Type"
-          value={formData.plan_type}
-          onChange={(e) => handlePlanChange(e.target.value)}
-          placeholder=""
-          options={plans.map(p => ({
-            value: p.plan_type,
-            label: `${p.plan_type.replace('_', ' ')} Plan`
+          label="1. Service"
+          value={formData.service_id}
+          onChange={(e) => handleServiceChange(e.target.value)}
+          placeholder="Select service..."
+          options={services.map(s => ({
+            value: s.id,
+            label: s.name
           }))}
+          error={errors.service_id}
           required
         />
 
+        {/* 2. Pick Plan (filtered to selected service) */}
         <Select
-          label="Assign Account from Inventory"
+          label="2. Subscription Plan"
+          value={formData.plan_id}
+          onChange={(e) => handlePlanChange(e.target.value)}
+          placeholder="Select plan..."
+          options={plans
+            .filter(p => p.service_id === formData.service_id)
+            .map(p => ({
+              value: p.id,
+              label: `${p.name} Plan (${p.default_sale_price} DZD default sale)`
+            }))}
+          error={errors.plan_id}
+          required
+        />
+
+        {/* 3. Pick Account from Inventory */}
+        <Select
+          label="3. Assign Inventory Account"
           value={formData.account_id}
           onChange={(e) => handleAccountChange(e.target.value)}
           placeholder="No account assigned yet"
@@ -513,7 +787,7 @@ export default function OrdersPage() {
             value: a.id,
             label: `${a.account_email} (${a.status})`
           }))}
-          hint={availableAccountsForPlan.length === 0 ? 'No available account found for this plan. You can assign one later.' : undefined}
+          hint={availableAccountsForPlan.length === 0 ? 'No available account found for this service & plan. You can add one in Inventory or assign later.' : undefined}
         />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
@@ -543,7 +817,7 @@ export default function OrdersPage() {
           fontSize: 'var(--text-xs)',
           color: 'var(--color-accent-hover)',
           display: 'flex',
-          justify: 'space-between',
+          justifyContent: 'space-between',
           alignItems: 'center',
           marginBottom: 'var(--space-4)'
         }}>
@@ -560,8 +834,8 @@ export default function OrdersPage() {
           placeholder=""
           options={[
             { value: 'delivered', label: 'Delivered (Account marked as sold)' },
-            { value: 'pending', label: 'Pending (Account held)' },
-            { value: 'cancelled', label: 'Cancelled (Account freed to available)' }
+            { value: 'pending', label: 'Pending (Account reserved)' },
+            { value: 'cancelled', label: 'Cancelled (Account freed)' }
           ]}
           required
         />

@@ -1,0 +1,623 @@
+/* ========================================================
+   CapCut Pro Landing Page Styles — Notion / CRM Theme
+   Clean, Minimal, Light Theme matching CodeIt CRM
+   ======================================================== */
+
+.capcut-notion-page {
+  /* Inherit & align with CodeIt CRM Design System */
+  --crm-bg-default: #ffffff;
+  --crm-bg-secondary: #f7f6f3;
+  --crm-bg-hover: #f1f1ef;
+  --crm-bg-selected: #e9e9e7;
+  
+  --crm-border-default: #e9e9e7;
+  --crm-border-strong: #d3d1cb;
+
+  --crm-text-primary: #37352f;
+  --crm-text-secondary: #787774;
+  --crm-text-disabled: #b9b8b5;
+
+  --crm-accent: #2383e2;
+  --crm-accent-hover: #1a73cf;
+  --crm-accent-bg-subtle: #e7f3fe;
+
+  --crm-success: #2f7a2f;
+  --crm-success-bg: #eaf6ea;
+
+  --crm-radius-sm: 4px;
+  --crm-radius-md: 6px;
+  --crm-radius-lg: 8px;
+
+  --crm-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --crm-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+
+  background-color: var(--crm-bg-secondary);
+  color: var(--crm-text-primary);
+  min-height: 100vh;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, Arial, sans-serif;
+  direction: rtl;
+  text-align: right;
+  line-height: 1.6;
+  padding: 24px 16px 80px;
+}
+
+/* Page Inner Container */
+.capcut-notion-container {
+  max-width: 680px;
+  margin: 0 auto;
+  background-color: var(--crm-bg-default);
+  border: 1px solid var(--crm-border-default);
+  border-radius: var(--crm-radius-lg);
+  box-shadow: var(--crm-shadow-sm);
+  padding: 32px 28px;
+}
+
+@media (max-width: 640px) {
+  .capcut-notion-page {
+    padding: 12px 10px 90px;
+  }
+  .capcut-notion-container {
+    padding: 20px 16px;
+    border-radius: var(--crm-radius-md);
+  }
+}
+
+/* Header / Brand Topbar */
+.capcut-notion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--crm-border-default);
+  margin-bottom: 28px;
+}
+
+.capcut-notion-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.capcut-notion-brand-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--crm-radius-sm);
+  background-color: var(--crm-accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.capcut-notion-brand-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--crm-text-primary);
+}
+
+.capcut-notion-brand-sub {
+  font-size: 11px;
+  color: var(--crm-text-secondary);
+}
+
+.capcut-notion-whatsapp-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--crm-text-secondary);
+  text-decoration: none;
+  padding: 5px 10px;
+  border-radius: var(--crm-radius-sm);
+  border: 1px solid var(--crm-border-default);
+  background-color: var(--crm-bg-default);
+  transition: all 120ms ease;
+}
+
+.capcut-notion-whatsapp-link:hover {
+  background-color: var(--crm-bg-hover);
+  color: var(--crm-text-primary);
+}
+
+/* Hero Section */
+.capcut-notion-hero {
+  margin-bottom: 32px;
+}
+
+.capcut-notion-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: var(--crm-accent-bg-subtle);
+  color: var(--crm-accent);
+  margin-bottom: 14px;
+}
+
+.capcut-notion-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--crm-text-primary);
+  line-height: 1.35;
+  margin-bottom: 10px;
+}
+
+@media (min-width: 640px) {
+  .capcut-notion-title {
+    font-size: 30px;
+  }
+}
+
+.capcut-notion-desc {
+  font-size: 14px;
+  color: var(--crm-text-secondary);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+/* Notion Stat / Price Card */
+.capcut-notion-price-card {
+  background-color: var(--crm-bg-secondary);
+  border: 1px solid var(--crm-border-default);
+  border-radius: var(--crm-radius-md);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.capcut-notion-price-label {
+  font-size: 12px;
+  color: var(--crm-text-secondary);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.capcut-notion-price-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.capcut-notion-price-num {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--crm-text-primary);
+  line-height: 1;
+}
+
+.capcut-notion-price-cur {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--crm-accent);
+}
+
+.capcut-notion-price-sub {
+  font-size: 12px;
+  color: var(--crm-text-secondary);
+}
+
+.capcut-notion-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--crm-accent);
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: var(--crm-radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 120ms ease;
+  white-space: nowrap;
+}
+
+.capcut-notion-cta-btn:hover {
+  background-color: var(--crm-accent-hover);
+}
+
+/* Trust Tags */
+.capcut-notion-trust-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--crm-text-secondary);
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--crm-border-default);
+}
+
+.capcut-notion-trust-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Sections */
+.capcut-notion-section {
+  margin-top: 32px;
+  margin-bottom: 32px;
+}
+
+.capcut-notion-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--crm-text-primary);
+  margin-bottom: 6px;
+}
+
+.capcut-notion-section-sub {
+  font-size: 13px;
+  color: var(--crm-text-secondary);
+  margin-bottom: 16px;
+}
+
+/* Features / Benefits Grid */
+.capcut-notion-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 540px) {
+  .capcut-notion-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.capcut-notion-card {
+  border: 1px solid var(--crm-border-default);
+  border-radius: var(--crm-radius-md);
+  padding: 14px 16px;
+  background-color: var(--crm-bg-default);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  transition: background-color 120ms ease;
+}
+
+.capcut-notion-card:hover {
+  background-color: var(--crm-bg-secondary);
+}
+
+.capcut-notion-icon-box {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: var(--crm-radius-sm);
+  background-color: var(--crm-accent-bg-subtle);
+  color: var(--crm-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.capcut-notion-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--crm-text-primary);
+  margin-bottom: 2px;
+}
+
+.capcut-notion-card-desc {
+  font-size: 12px;
+  color: var(--crm-text-secondary);
+  line-height: 1.5;
+}
+
+/* Payment Instructions (Notion Callout Style) */
+.capcut-notion-callout {
+  background-color: var(--crm-bg-secondary);
+  border: 1px solid var(--crm-border-default);
+  border-radius: var(--crm-radius-md);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+
+.capcut-notion-callout-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--crm-text-primary);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.capcut-notion-callout-body {
+  font-size: 12px;
+  color: var(--crm-text-secondary);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.capcut-notion-methods {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 540px) {
+  .capcut-notion-methods {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.capcut-notion-method-box {
+  background-color: var(--crm-bg-default);
+  border: 1px solid var(--crm-border-default);
+  border-radius: var(--crm-radius-sm);
+  padding: 12px 14px;
+}
+
+.capcut-notion-method-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--crm-text-primary);
+  margin-bottom: 6px;
+}
+
+.capcut-notion-method-val {
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--crm-text-primary);
+  background-color: var(--crm-bg-secondary);
+  padding: 6px 8px;
+  border-radius: var(--crm-radius-sm);
+  direction: ltr;
+  text-align: center;
+  margin-bottom: 8px;
+  word-break: break-all;
+  border: 1px solid var(--crm-border-default);
+}
+
+.capcut-notion-copy-btn {
+  width: 100%;
+  height: 28px;
+  background-color: var(--crm-bg-default);
+  border: 1px solid var(--crm-border-default);
+  border-radius: var(--crm-radius-sm);
+  color: var(--crm-text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 120ms ease;
+}
+
+.capcut-notion-copy-btn:hover {
+  background-color: var(--crm-bg-hover);
+}
+
+.capcut-notion-copy-btn.copied {
+  background-color: var(--crm-success-bg);
+  color: var(--crm-success);
+  border-color: var(--crm-success);
+}
+
+/* Order Form */
+.capcut-notion-form {
+  border-top: 1px solid var(--crm-border-default);
+  padding-top: 28px;
+}
+
+.capcut-notion-group {
+  margin-bottom: 16px;
+}
+
+.capcut-notion-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--crm-text-secondary);
+  margin-bottom: 4px;
+}
+
+.capcut-notion-label .req {
+  color: #c4372b;
+  margin-right: 2px;
+}
+
+.capcut-notion-input, 
+.capcut-notion-select, 
+.capcut-notion-textarea {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--crm-border-default);
+  border-radius: var(--crm-radius-sm);
+  font-size: 14px;
+  background-color: var(--crm-bg-default);
+  color: var(--crm-text-primary);
+  transition: all 120ms ease-in-out;
+  outline: none;
+  direction: rtl;
+  text-align: right;
+}
+
+.capcut-notion-input[type="tel"], 
+.capcut-notion-input[type="email"] {
+  direction: ltr;
+  text-align: left;
+}
+
+.capcut-notion-textarea {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 12px;
+  resize: vertical;
+}
+
+.capcut-notion-input:focus, 
+.capcut-notion-select:focus, 
+.capcut-notion-textarea:focus {
+  border-color: var(--crm-accent);
+  outline: 2px solid var(--crm-accent-bg-subtle);
+}
+
+.capcut-notion-input.error {
+  border-color: #c4372b;
+}
+
+.capcut-notion-error {
+  font-size: 11px;
+  color: #c4372b;
+  margin-top: 4px;
+}
+
+.capcut-notion-submit {
+  width: 100%;
+  height: 40px;
+  background-color: var(--crm-accent);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--crm-radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 120ms ease;
+  margin-top: 8px;
+}
+
+.capcut-notion-submit:hover {
+  background-color: var(--crm-accent-hover);
+}
+
+.capcut-notion-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Success Confirmation State */
+.capcut-notion-success {
+  background-color: var(--crm-bg-secondary);
+  border: 1px solid var(--crm-border-default);
+  border-radius: var(--crm-radius-md);
+  padding: 36px 20px;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.capcut-notion-success-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--crm-success-bg);
+  color: var(--crm-success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+}
+
+.capcut-notion-success-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--crm-text-primary);
+  margin-bottom: 8px;
+}
+
+.capcut-notion-success-desc {
+  font-size: 13px;
+  color: var(--crm-text-secondary);
+  max-width: 440px;
+  margin: 0 auto 20px;
+  line-height: 1.6;
+}
+
+.capcut-notion-whatsapp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: #25d366;
+  color: #ffffff;
+  padding: 10px 18px;
+  border-radius: var(--crm-radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 120ms ease;
+}
+
+.capcut-notion-whatsapp-btn:hover {
+  opacity: 0.9;
+}
+
+/* Mobile Sticky Bottom Bar */
+.capcut-notion-sticky-bar {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .capcut-notion-sticky-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--crm-bg-default);
+    border-top: 1px solid var(--crm-border-default);
+    padding: 10px 16px;
+    z-index: 99;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  }
+
+  .capcut-notion-sticky-info {
+    text-align: right;
+  }
+
+  .capcut-notion-sticky-label {
+    font-size: 11px;
+    color: var(--crm-text-secondary);
+  }
+
+  .capcut-notion-sticky-price {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--crm-accent);
+    line-height: 1.1;
+  }
+
+  .capcut-notion-sticky-btn {
+    background-color: var(--crm-accent);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: var(--crm-radius-md);
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+  }
+}
+
+/* Footer */
+.capcut-notion-footer {
+  text-align: center;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--crm-border-default);
+  font-size: 12px;
+  color: var(--crm-text-secondary);
+}

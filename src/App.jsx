@@ -10,6 +10,7 @@ import CustomersPage from './pages/CustomersPage';
 import AccountsPage from './pages/AccountsPage';
 import OrdersPage from './pages/OrdersPage';
 import SettingsPage from './pages/SettingsPage';
+import CapCutLandingPage from './pages/CapCutLandingPage';
 
 export default function App() {
   return (
@@ -17,6 +18,9 @@ export default function App() {
       <ToastProvider>
         <AuthProvider>
           <Routes>
+            {/* Public Standalone Landing Pages */}
+            <Route path="/capcut" element={<CapCutLandingPage />} />
+
             {/* Public Login Route */}
             <Route path="/login" element={<LoginPage />} />
 

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
 import { useToast } from '../context/ToastContext';
 import Button from '../components/UI/Button';
 import Input from '../components/UI/Input';
@@ -9,9 +8,17 @@ import SlideOver from '../components/UI/SlideOver';
 import ConfirmModal from '../components/UI/ConfirmModal';
 import EmptyState from '../components/UI/EmptyState';
 import { Plus, Search, Edit2, Trash2, User, Phone, Mail, FileText, ShoppingCart } from 'lucide-react';
+import { 
+  getCrmCustomers, 
+  saveCrmCustomer, 
+  getCrmOrders, 
+  getCrmServices 
+} from '../lib/crmData';
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -25,7 +32,6 @@ export default function CustomersPage() {
   // Customer Detail slide-over state
   const [detailCustomer, setDetailCustomer] = useState(null);
   const [customerOrders, setCustomerOrders] = useState([]);
-  const [loadingOrders, setLoadingOrders] = useState(false);
 
   // Delete modal state
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -40,26 +46,17 @@ export default function CustomersPage() {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      // Fetch customers with their orders to compute count and last status
-      const { data, error } = await supabase
-        .from('customers')
-        .select(`
-          *,
-          orders (
-            id,
-            plan_type,
-            sale_price,
-            order_status,
-            created_at
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setCustomers(data || []);
+      const [fetchedCustomers, fetchedOrders, fetchedServices] = await Promise.all([
+        getCrmCustomers(),
+        getCrmOrders(),
+        getCrmServices()
+      ]);
+      setCustomers(fetchedCustomers);
+      setOrders(fetchedOrders);
+      setServices(fetchedServices);
     } catch (err) {
       console.error('Error fetching customers:', err);
-      addToast(err.message || 'Failed to load customers', 'error');
+      addToast('Failed to load customers', 'error');
     } finally {
       setLoading(false);
     }
@@ -85,29 +82,11 @@ export default function CustomersPage() {
     setIsFormOpen(true);
   };
 
-  const handleOpenDetail = async (customer) => {
+  const handleOpenDetail = (customer) => {
     setDetailCustomer(customer);
-    setLoadingOrders(true);
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          account:accounts(account_email, account_password)
-        `)
-        .eq('customer_id', customer.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setCustomerOrders(data || []);
-    } catch (err) {
-      console.error('Error fetching customer orders:', err);
-      addToast('Failed to load customer orders', 'error');
-    } finally {
-      setLoadingOrders(false);
-    }
+    const relatedOrders = orders.filter(o => o.customer_id === customer.id);
+    setCustomerOrders(relatedOrders);
   };
-
 
   const validateForm = () => {
     const errs = {};
@@ -133,17 +112,11 @@ export default function CustomersPage() {
       };
 
       if (editingCustomer) {
-        const { error } = await supabase
-          .from('customers')
-          .update(payload)
-          .eq('id', editingCustomer.id);
-        if (error) throw error;
+        payload.id = editingCustomer.id;
+        await saveCrmCustomer(payload);
         addToast('Customer updated successfully', 'success');
       } else {
-        const { error } = await supabase
-          .from('customers')
-          .insert([payload]);
-        if (error) throw error;
+        await saveCrmCustomer(payload);
         addToast('Customer added successfully', 'success');
       }
 
@@ -151,34 +124,24 @@ export default function CustomersPage() {
       fetchCustomers();
     } catch (err) {
       console.error('Error saving customer:', err);
-      addToast(err.message || 'Failed to save customer', 'error');
+      addToast('Failed to save customer', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-
-
-
-  
-
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
-      const { error } = await supabase
-        .from('customers')
-        .delete()
-        .eq('id', deleteTarget.id);
-
-      if (error) throw error;
+      const updated = customers.filter(c => c.id !== deleteTarget.id);
+      setCustomers(updated);
       addToast('Customer deleted successfully', 'success');
       setDeleteTarget(null);
       if (detailCustomer?.id === deleteTarget.id) setDetailCustomer(null);
-      fetchCustomers();
     } catch (err) {
       console.error('Error deleting customer:', err);
-      addToast(err.message || 'Failed to delete customer', 'error');
+      addToast('Failed to delete customer', 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -200,7 +163,7 @@ export default function CustomersPage() {
         <div>
           <h1 className="page-title">Customers</h1>
           <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-            Manage client profiles and view order histories.
+            Manage client profiles and view multi-service subscription histories.
           </p>
         </div>
         <div className="page-header-actions">
@@ -249,16 +212,16 @@ export default function CustomersPage() {
                 <th>Customer Name</th>
                 <th>Phone</th>
                 <th>Email</th>
-                <th>Orders</th>
+                <th>Total Orders</th>
                 <th>Last Order Status</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredCustomers.map((customer) => {
-                const ordersList = customer.orders || [];
-                const sortedOrders = [...ordersList].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                const lastOrderStatus = sortedOrders[0]?.order_status;
+                const customerOrderList = orders.filter(o => o.customer_id === customer.id);
+                const sortedOrders = [...customerOrderList].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                const lastOrder = sortedOrders[0];
 
                 return (
                   <tr 
@@ -276,10 +239,10 @@ export default function CustomersPage() {
                     <td style={{ color: customer.email ? 'inherit' : 'var(--color-text-disabled)' }}>
                       {customer.email || '—'}
                     </td>
-                    <td>{ordersList.length}</td>
+                    <td>{customerOrderList.length}</td>
                     <td>
-                      {lastOrderStatus ? (
-                        <Badge status={lastOrderStatus} />
+                      {lastOrder ? (
+                        <Badge status={lastOrder.order_status} />
                       ) : (
                         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-disabled)' }}>No orders</span>
                       )}
@@ -355,7 +318,7 @@ export default function CustomersPage() {
         />
       </SlideOver>
 
-      {/* Customer Detail & Order History Slide-Over Panel */}
+      {/* Customer Detail & Multi-Service Order History Slide-Over Panel */}
       <SlideOver
         isOpen={!!detailCustomer}
         onClose={() => setDetailCustomer(null)}
@@ -396,47 +359,50 @@ export default function CustomersPage() {
               <span>Purchase History ({customerOrders.length})</span>
             </h3>
 
-            {loadingOrders ? (
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', padding: 'var(--space-4)' }}>
-                Loading order history...
-              </div>
-            ) : customerOrders.length === 0 ? (
+            {customerOrders.length === 0 ? (
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', padding: 'var(--space-4)', textAlign: 'center' }}>
                 No orders placed by this customer yet.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                {customerOrders.map((ord) => (
-                  <div key={ord.id} style={{
-                    border: '1px solid var(--color-border-default)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: 'var(--space-3)',
-                    backgroundColor: 'var(--color-bg-default)'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
-                      <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>
-                        {ord.plan_type?.replace('_', ' ')} Plan
-                      </span>
-                      <Badge status={ord.order_status} />
-                    </div>
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Price: {Number(ord.sale_price).toLocaleString('fr-DZ')} DZD</span>
-                      <span>Profit: {Number(ord.profit).toLocaleString('fr-DZ')} DZD</span>
-                    </div>
-                    {ord.account && (
-                      <div style={{
-                        marginTop: 'var(--space-2)',
-                        paddingTop: 'var(--space-2)',
-                        borderTop: '1px dashed var(--color-border-default)',
-                        fontSize: 'var(--text-xs)',
-                        color: 'var(--color-text-primary)'
-                      }}>
-                        <div><strong>Account Email:</strong> {ord.account.account_email}</div>
-                        <div><strong>Password:</strong> {ord.account.account_password}</div>
+                {customerOrders.map((ord) => {
+                  const matchedService = services.find(s => s.id === ord.service_id) || { name: 'Coursera', slug: 'coursera' };
+
+                  return (
+                    <div key={ord.id} style={{
+                      border: '1px solid var(--color-border-default)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: 'var(--space-3)',
+                      backgroundColor: 'var(--color-bg-default)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                          <Badge service={matchedService.slug} label={matchedService.name} />
+                          <span style={{ fontWeight: 600, textTransform: 'capitalize', fontSize: 'var(--text-sm)' }}>
+                            {ord.plan?.name || ord.plan_type?.replace('_', ' ')} Plan
+                          </span>
+                        </div>
+                        <Badge status={ord.order_status} />
                       </div>
-                    )}
-                  </div>
-                ))}
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Price: {Number(ord.sale_price).toLocaleString('fr-DZ')} DZD</span>
+                        <span>Profit: {Number(ord.profit).toLocaleString('fr-DZ')} DZD</span>
+                      </div>
+                      {ord.account && (
+                        <div style={{
+                          marginTop: 'var(--space-2)',
+                          paddingTop: 'var(--space-2)',
+                          borderTop: '1px dashed var(--color-border-default)',
+                          fontSize: 'var(--text-xs)',
+                          color: 'var(--color-text-primary)'
+                        }}>
+                          <div><strong>Account:</strong> {ord.account.account_email}</div>
+                          <div><strong>Password:</strong> {ord.account.account_password}</div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
